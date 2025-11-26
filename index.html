@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Attendance System - QR Code</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- jsQR for QR Code scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+</head>
+<body>
+    <!-- Login/Signup Modal -->
+    <div id="authModal" class="auth-modal">
+        <div class="auth-container">
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form active">
+                <h2>Login</h2>
+                <div class="form-group">
+                    <label for="loginUsername">Username:</label>
+                    <input type="text" id="loginUsername" placeholder="Enter username" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password:</label>
+                    <input type="password" id="loginPassword" placeholder="Enter password" required>
+                </div>
+                <button class="btn btn-primary" onclick="handleLogin()">Login</button>
+                <p class="auth-switch">Don't have an account? <a onclick="switchAuthForm('signup')">Sign Up</a></p>
+                <div id="loginError" class="error-message"></div>
+            </div>
+
+            <!-- Signup Form -->
+            <div id="signupForm" class="auth-form">
+                <h2>Sign Up</h2>
+                <div class="form-group">
+                    <label for="signupUsername">Username:</label>
+                    <input type="text" id="signupUsername" placeholder="Enter username" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupEmail">Email:</label>
+                    <input type="email" id="signupEmail" placeholder="Enter email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Password:</label>
+                    <input type="password" id="signupPassword" placeholder="Enter password (min 6 chars)" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupConfirmPassword">Confirm Password:</label>
+                    <input type="password" id="signupConfirmPassword" placeholder="Confirm password" required>
+                </div>
+                <button class="btn btn-primary" onclick="handleSignup()">Sign Up</button>
+                <p class="auth-switch">Already have an account? <a onclick="switchAuthForm('login')">Login</a></p>
+                <div id="signupError" class="error-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App (Hidden until logged in) -->
+    <div id="mainApp" class="main-app" style="display:none;">
+        <div class="container">
+            <header>
+                <div class="header-top">
+                    <div>
+                        <h1>📋 Smart Attendance System</h1>
+                        <p>QR Code-Based Attendance Tracking</p>
+                    </div>
+                    <div class="user-info">
+                        <span id="currentUsername">User</span>
+                        <button class="btn btn-danger btn-small" onclick="handleLogout()">Logout</button>
+                    </div>
+                </div>
+                <!-- App Links Section -->
+                <div style="margin-top:15px; padding:12px; background:#e8f4f8; border:1px solid #b3d9e8; border-radius:6px;">
+                    <button onclick="toggleAppLinks()" style="background:none; border:none; color:#0066cc; cursor:pointer; font-weight:bold; font-size:14px; padding:0;">
+                        🔗 App Links (Click to show)
+                    </button>
+                    <div id="appLinksPanel" style="display:none; margin-top:10px; font-size:13px;">
+                        <div style="margin-bottom:8px;">
+                            <strong>Local Access:</strong><br>
+                            <code style="background:#fff; padding:6px; border-radius:4px; display:block; word-break:break-all; margin-top:4px;">http://localhost:8000</code>
+                            <button onclick="copyToClipboard('http://localhost:8000')" class="btn btn-primary btn-small" style="margin-top:4px;">Copy</button>
+                        </div>
+                        <div style="margin-bottom:8px;">
+                            <strong>Network Share:</strong><br>
+                            <code style="background:#fff; padding:6px; border-radius:4px; display:block; word-break:break-all; margin-top:4px;">http://YOUR_IP:8000</code>
+                            <p style="margin:4px 0; color:#666; font-size:12px;">Find YOUR_IP: Open cmd → type <code>ipconfig</code> → find IPv4 Address</p>
+                            <button onclick="promptNetworkIP()" class="btn btn-primary btn-small">Get & Copy Network Link</button>
+                        </div>
+                        <div>
+                            <strong>Direct File:</strong><br>
+                            <code style="background:#fff; padding:6px; border-radius:4px; display:block; word-break:break-all; margin-top:4px;">C:\Users\purva\Smart attendance system\index.html</code>
+                            <button onclick="copyToClipboard('C:\\Users\\purva\\Smart attendance system\\index.html')" class="btn btn-primary btn-small" style="margin-top:4px;">Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <nav class="nav-tabs">
+                <button class="nav-btn active" data-tab="admin">Admin Panel</button>
+                <button class="nav-btn" data-tab="scanner">Scan QR</button>
+                <button class="nav-btn" data-tab="attendance">Attendance Report</button>
+                <button class="nav-btn" data-tab="student-records">Student Records</button>
+                <button class="nav-btn" data-tab="database">📊 Database</button>
+            </nav>
+
+        <!-- Admin Panel Tab -->
+        <section id="admin" class="tab-content active">
+            <div class="panel">
+                <h2>Admin Panel - Generate QR Codes</h2>
+                
+                <div class="form-group">
+                    <label for="studentId">Student ID:</label>
+                    <input type="text" id="studentId" placeholder="Enter Student ID" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentName">Student Name:</label>
+                    <input type="text" id="studentName" placeholder="Enter Student Name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentEmail">Email:</label>
+                    <input type="email" id="studentEmail" placeholder="Enter Email" required>
+                </div>
+
+                <button class="btn btn-primary" onclick="generateQRCode()">Generate QR Code</button>
+
+                <div id="qrContainer" class="qr-container"></div>
+
+                <button class="btn btn-secondary" onclick="downloadQRCode()" id="downloadBtn" style="display:none;">Download QR Code</button>
+
+                <div class="divider"></div>
+
+                <h3>All Students</h3>
+                <table id="studentsTable" class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Scanner Tab -->
+        <section id="scanner" class="tab-content">
+            <div class="panel">
+                <h2>Scan QR Code for Attendance</h2>
+
+                <!-- Instructions -->
+                <div class="instructions-box">
+                    <h3>📖 How to Use:</h3>
+                    <ol class="instruction-list">
+                        <li>Click <strong>"Start Camera"</strong> button below</li>
+                        <li>Allow camera access when prompted by your browser</li>
+                        <li>Hold student's QR code in front of camera</li>
+                        <li>Keep QR code steady - scanning is automatic</li>
+                        <li>You will see a confirmation message when attendance is marked</li>
+                        <li>Click <strong>"Stop Camera"</strong> to finish</li>
+                    </ol>
+                    <p style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e9ecef;">
+                        <strong>💡 Tips:</strong> Ensure good lighting, hold device 6-12 inches away from QR code, and keep it steady.
+                    </p>
+                </div>
+
+                <div class="scanner-controls">
+                    <button class="btn btn-primary" id="startScanBtn" onclick="startScanning()">🎥 Start Camera</button>
+                    <button class="btn btn-secondary" id="stopScanBtn" onclick="stopScanning()" style="display:none;">⏹️ Stop Camera</button>
+                    <button class="btn btn-secondary" onclick="toggleInstructions()">❓ Help</button>
+                </div>
+
+                <div id="cameraContainer" style="display:none;">
+                    <div class="camera-wrapper">
+                        <video id="video" width="400" height="400" style="border: 2px solid #007bff; border-radius: 8px;"></video>
+                        <canvas id="canvas" style="display:none;"></canvas>
+                        <div class="scanning-indicator">
+                            <div class="scanner-dot"></div>
+                            <p>Scanning...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="scanResult" class="scan-result" style="display:none;"></div>
+
+                <!-- Raw decoded QR text / URL -->
+                <div id="decodedText" class="decoded-text" style="display:none; margin-top:12px; padding:10px; background:#f8f9fa; border:1px solid #e9ecef; border-radius:6px;">
+                    <strong>Decoded Text:</strong>
+                    <div id="decodedTextContent" style="margin-top:8px; word-break:break-all;"></div>
+                </div>
+
+                <!-- Image upload for QR decoding -->
+                <div style="margin-top:20px;">
+                    <h3>📷 Upload QR Image</h3>
+                    <p style="color:#666;">If you have a QR image file, upload it and the app will decode it.</p>
+                    <input type="file" id="qrImageInput" accept="image/*" onchange="handleImageUpload(event)" style="padding:6px;" />
+                    <div style="margin-top:10px;">
+                        <img id="uploadedPreview" src="" alt="Preview" style="max-width:200px; max-height:200px; display:none; border:1px solid #ddd; padding:6px; border-radius:6px;" />
+                    </div>
+                </div>
+
+                <!-- Alternative Input -->
+                <div class="divider" style="margin: 30px 0;"></div>
+                
+                <div class="alternative-section">
+                    <h3>📤 Manual Entry (Alternative)</h3>
+                    <p style="margin-bottom: 15px; color: #666;">If scanning doesn't work, you can manually enter student ID:</p>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="manualStudentId" placeholder="Enter Student ID" style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px;">
+                        <button class="btn btn-primary" onclick="markAttendanceManually()">Mark Attendance</button>
+                    </div>
+                    <div id="manualResult" style="display:none; margin-top: 15px;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Attendance Report Tab -->
+        <section id="attendance" class="tab-content">
+            <div class="panel">
+                <h2>Attendance Report</h2>
+
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalRecords">0</div>
+                        <div class="stat-label">Total Records</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="uniqueStudents">0</div>
+                        <div class="stat-label">Unique Students</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="todayCount">0</div>
+                        <div class="stat-label">Today's Attendance</div>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <input type="date" id="filterDate" onchange="filterAttendanceByDate()" placeholder="Filter by date">
+                    <select id="filterStudent" onchange="filterAttendanceByStudent()" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="">All Students</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="resetAttendanceFilters()">Reset Filters</button>
+
+                    <button class="btn btn-secondary" onclick="exportAttendance()">📊 Export CSV</button>
+                    <button class="btn btn-secondary" onclick="exportAttendancePDF()">📄 Export PDF</button>
+                    <button class="btn btn-secondary" onclick="exportCompleteReport()">📥 Export All</button>
+                    <button class="btn btn-secondary" onclick="clearAllAttendance()" style="background: #dc3545; color: white;">Clear All</button>
+                </div>
+
+                <table id="attendanceTable" class="table">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Check-In Time</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Student Records Tab -->
+        <section id="student-records" class="tab-content">
+            <div class="panel">
+                <h2>Student Attendance Records</h2>
+
+                <div class="filter-section">
+                    <select id="studentFilter" onchange="filterByStudent()" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <option value="">Select a Student...</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="exportStudentRecord()">📥 Export Student Record</button>
+                </div>
+
+                <div id="studentRecordContainer" style="display:none;">
+                    <div class="student-info-card">
+                        <h3 id="recordStudentName"></h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label>Student ID:</label>
+                                <p id="recordStudentId"></p>
+                            </div>
+                            <div class="info-item">
+                                <label>Email:</label>
+                                <p id="recordStudentEmail"></p>
+                            </div>
+                            <div class="info-item">
+                                <label>Total Days Present:</label>
+                                <p id="recordTotalPresent" style="color: #28a745; font-weight: bold;"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top: 30px; margin-bottom: 15px;">Attendance History</h4>
+                    <table id="studentAttendanceTable" class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Check-In Time</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentAttendanceBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="noStudentSelected" style="text-align: center; padding: 40px; color: #999;">
+                    <p>Select a student to view their attendance records</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Student Database Tab -->
+        <section id="database" class="tab-content">
+            <div class="panel">
+                <h2>📊 Student Database & Teacher Notes</h2>
+
+                <div class="database-section">
+                    <div class="form-section">
+                        <h3>Add Student to Database</h3>
+                        <div class="form-group">
+                            <label for="dbStudentId">Student ID:</label>
+                            <input type="text" id="dbStudentId" placeholder="Enter Student ID" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dbStudentName">Student Name:</label>
+                            <input type="text" id="dbStudentName" placeholder="Enter Student Name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dbStudentEmail">Email:</label>
+                            <input type="email" id="dbStudentEmail" placeholder="Enter Email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dbStudentPhone">Phone:</label>
+                            <input type="tel" id="dbStudentPhone" placeholder="Enter Phone Number">
+                        </div>
+                        <div class="form-group">
+                            <label for="dbStudentClass">Class/Section:</label>
+                            <input type="text" id="dbStudentClass" placeholder="e.g., 10-A">
+                        </div>
+                        <button class="btn btn-primary" onclick="addStudentToDatabase()">Add to Database</button>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <h3>Student Records</h3>
+                    <div class="search-section">
+                        <input type="text" id="dbSearchInput" placeholder="Search by name, ID, or email..." onkeyup="searchStudentDatabase()" style="padding: 10px; width: 100%; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px;">
+                        <button class="btn btn-secondary" onclick="exportDatabase()">📥 Export Database</button>
+                        <button class="btn btn-secondary" onclick="clearDatabase()" style="background: #dc3545; color: white;">🗑️ Clear All Records</button>
+                    </div>
+
+                    <div id="databaseTableContainer">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Class</th>
+                                    <th>Joined Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="databaseTableBody">
+                            </tbody>
+                        </table>
+                        <div id="noDatabaseRecords" style="text-align: center; padding: 40px; color: #999;">
+                            <p>No student records found. Add your first student above.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teacher Notes Modal -->
+                <div id="notesModal" class="modal">
+                    <div class="modal-content notes-modal">
+                        <span class="close" onclick="closeNotesModal()">&times;</span>
+                        <h3 id="notesStudentName">Student Notes</h3>
+                        <div class="form-group">
+                            <label for="teacherNotes">Teacher Notes:</label>
+                            <textarea id="teacherNotes" placeholder="Enter teacher notes, observations, comments..." style="width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: Arial; resize: vertical;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentPerformance">Performance Level:</label>
+                            <select id="studentPerformance" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%;">
+                                <option value="">Select Performance</option>
+                                <option value="Excellent">⭐ Excellent</option>
+                                <option value="Good">✅ Good</option>
+                                <option value="Average">➖ Average</option>
+                                <option value="Needs Improvement">⚠️ Needs Improvement</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentStatus">Status:</label>
+                            <select id="studentStatus" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%;">
+                                <option value="Active">✅ Active</option>
+                                <option value="Inactive">⏸️ Inactive</option>
+                                <option value="Suspended">🚫 Suspended</option>
+                                <option value="Graduated">🎓 Graduated</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveStudentNotes()">Save Notes</button>
+                        <button class="btn btn-secondary" onclick="closeNotesModal()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        </div>
+
+        <!-- Modal for QR Details -->
+        <div id="qrModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h3>QR Code Details</h3>
+                <div id="modalQRCode"></div>
+                <p id="modalQRText"></p>
+                <button class="btn btn-primary" onclick="downloadModalQR()">Download</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
